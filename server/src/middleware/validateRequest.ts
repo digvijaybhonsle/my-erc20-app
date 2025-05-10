@@ -27,16 +27,13 @@ export function validateQuery(schema: z.ZodSchema) {
     };
 }
 
-export function validateParams(schema: z.ZodSchema) {
-    return (req: Request, res: Response, next: NextFunction) => {
-        const result = schema.safeParse(req.params);
-        if (!result.success) {
-            return res.status(400).json({
-                message: "Invalid URL parameters",
-                errors: result.error.format(),
-            });
-        }
-        req.params = result.data;
-        next();
-    };
-}
+export const validateParams = (schema: z.ZodSchema) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const result = schema.safeParse(req.params);
+    if (!result.success) {
+      res.status(400).json({ error: result.error.format() });
+      return;
+    }
+    next();
+  };
+};

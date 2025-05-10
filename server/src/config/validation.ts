@@ -6,7 +6,7 @@ export const EnvSchema = z.object({
   PORT: z.string().transform((val) => parseInt(val, 10)).default("4000"),
 
   // Ethereum RPC & wallet
-  SEPOLIA_URL: z.string().url(),
+  ALCHEMY_URL: z.string().url(),
   PRIVATE_KEY: z.string().length(64),
 
   // MongoDB

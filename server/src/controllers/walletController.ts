@@ -1,4 +1,3 @@
-// server/src/controllers/walletController.ts
 import { Request, Response } from "express";
 import { ethereumService } from "../services/ethereumService";
 
@@ -14,12 +13,25 @@ export async function sendToken(req: Request, res: Response) {
   const txHash = await ethereumService.transferTokens(to, amount);
   res.json({ txHash });
 }
-export function getNonce(arg0: string, getNonce: any) {
-    throw new Error("Function not implemented.");
+
+// ✅ Implement login and getNonce
+export async function getNonce(req: Request, res: Response) {
+  const { address } = req.query;
+  if (!address || typeof address !== "string") {
+    return res.status(400).json({ error: "Address is required" });
+  }
+
+  // Replace with your own logic
+  const nonce = Math.floor(Math.random() * 1000000);
+  res.json({ nonce });
 }
 
-export function login(arg0: string, login: any) {
-    throw new Error("Function not implemented.");
-}
-  
+export async function login(req: Request, res: Response) {
+  const { address, signature } = req.body;
+  if (!address || !signature) {
+    return res.status(400).json({ error: "Missing address or signature" });
+  }
 
+  // Replace with your login verification logic
+  res.json({ success: true, address });
+}

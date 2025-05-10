@@ -1,6 +1,6 @@
 import { config } from '../config';
 import { ethers } from 'ethers';
-import * as deployment from '../../../deployments/sepolia.json;
+import * as deployment from "../../../deployments/sepolia.json";
 
 interface ContractInstance {
     address: string;
@@ -20,7 +20,7 @@ class EthereumService {
   
     constructor() {
       // 1. Provider
-      this.provider = new ethers.JsonRpcProvider(config.SEPOLIA_URL);
+      this.provider = new ethers.JsonRpcProvider(config.ALCHEMY_URL);
   
       // 2. Signer (the server’s wallet for sending txs)
       this.signer = new ethers.Wallet(config.PRIVATE_KEY, this.provider);

@@ -16,7 +16,7 @@ export const config = {
     NODE_ENV: parsed.data.NODE_ENV,
     PORT: parsed.data.PORT,
 
-    SEPOLIA_URL: parsed.data.SEPOLIA_URL,
+    ALCHEMY_URL: parsed.data.ALCHEMY_URL,
     PRIVATE_KEY: parsed.data.PRIVATE_KEY,
 
     DB_URI: parsed.data.DB_URI,

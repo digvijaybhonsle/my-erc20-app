@@ -7,5 +7,5 @@ export const TransferSchema = z.object({
 });
 
 export const BalanceParamsSchema = z.object({
-  address: z.string().length(42),
+  address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
 });

@@ -1,18 +1,19 @@
-// server/src/middleware/errorHandler.ts
-import { Request, Response, NextFunction } from "express";
-import { HttpError } from "../utils/errors";
-import { log } from "../utils/logger";
+// src/middleware/errorHandler.ts
+import { Request, Response, NextFunction, ErrorRequestHandler } from "express";
+import { HttpError } from "http-errors";
 
-export function errorHandler(
-  err: Error | HttpError,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  if (err instanceof HttpError) {
-    log.warn(`HTTP ${err.status}: ${err.message}`);
-    return res.status(err.status).json({ error: err.message });
-  }
-  log.error(err.message, err);
-  res.status(500).json({ error: "Internal Server Error" });
-}
+export const errorHandler: ErrorRequestHandler = (
+  err,
+  _req,
+  res,
+  _next
+) => {
+  // Determine HTTP status
+  const status = (err as HttpError).status ?? 500;
+
+  res.status(status).json({
+    error: {
+      message: err.message || "Internal Server Error",
+    },
+  });
+};

@@ -6,7 +6,7 @@ import { HttpError } from "../utils/errors";
 const ipMap = new Map<string, { count: number; firstRequest: number }>();
 
 export function rateLimiter(req: Request, res: Response, next: NextFunction) {
-  const ip = req.ip;
+  const ip = req.ip || "unknown";
   const now = Date.now();
   const windowMs = config.RATE_LIMIT_WINDOW_MS;
   const max = config.RATE_LIMIT_MAX;

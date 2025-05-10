@@ -1,6 +1,33 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import box from "../assets/boximg.svg";
+import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import axios from "axios";
+
 
 const Home = () => {
+  const [prices, setPrices] = useState({
+    BTC: null,
+    ETH: null,
+    SOL: null,
+  });
+
+  useEffect(() => {
+  const fetchPrices = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/crypto/prices"); // replace with your deployed URL if needed
+      setPrices(res.data);
+    } catch (err) {
+      console.error("Error fetching live prices", err);
+    }
+  };
+
+  fetchPrices();
+  }, []);
+
+  const formatPrice = (price: number | null) =>
+    price ? `$${Number(price).toLocaleString()}` : "Loading...";
+  
   return (
     <div>
       <div
@@ -29,13 +56,12 @@ const Home = () => {
             className="flex justify-left mt-6"
             style={{ padding: "25px 0 5px 0" }}
           >
-            <a
-              href="#"
-              className="bg-blue-500 text-xl text-gray-200 px-4 py-2 rounded-full transition duration-200 ease-in-out transform hover:bg-blue-600 hover:scale-105 hover:shadow-lg"
-              style={{ padding: "16px 12px 16px 12px" }}
+            <Link
+              to="/join-wallet"
+              className="bg-blue-500 text-xl text-gray-200 px-6 py-3 rounded-full transition duration-200 ease-in-out transform hover:bg-blue-600 hover:scale-105 hover:shadow-lg"
             >
               Get Started
-            </a>
+            </Link>
           </div>
         </div>
         <div className="w-full md:w-1/2 mt-10 md:mt-0 flex justify-center">
@@ -47,7 +73,7 @@ const Home = () => {
               height: "auto",
               width: "100%",
               maxWidth: "80%",
-              cursor: "pointer"
+              cursor: "pointer",
             }}
           >
             <img
@@ -139,11 +165,15 @@ const Home = () => {
           <h2 className="text-2xl font-semibold text-yellow-400 mb-4">
             Swap Crypto for Free
           </h2>
-          <button className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-medium px-6 py-2 rounded-full transition duration-200 ease-in-out transform hover:scale-105 hover:shadow-lg">
+          <Link
+            to="/dashboard"
+            className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-medium px-6 py-2 rounded-full transition duration-200 ease-in-out transform hover:scale-105 hover:shadow-lg"
+          >
             Swap →
-          </button>
+          </Link>
         </div>
       </div>
+      {/* Live Crypto Market Section */}
       <div className="mt-16 px-6 text-xl">
         <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center">
           Live Crypto Market
@@ -152,20 +182,20 @@ const Home = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 text-white mt-10 px-4">
             <div className="bg-gray-700 p-6 rounded-l-lg shadow flex flex-col justify-center items-center border-r-2">
               <h3 className="text-2xl font-semibold mb-3">Bitcoin (BTC)</h3>
-              <p className="mb-1">Price: $50,000</p>
-              <p>Market Cap: $1T</p>
+              <p className="mb-1">Price: {formatPrice(prices.BTC)}</p>
+              <p>Market Cap: ~</p>
             </div>
 
             <div className="bg-gray-700 p-6 rounded-none shadow flex flex-col justify-center items-center border-r-2">
               <h3 className="text-2xl font-semibold mb-3">Ethereum (ETH)</h3>
-              <p className="mb-1">Price: $3,000</p>
-              <p>Market Cap: $400B</p>
+              <p className="mb-1">Price: {formatPrice(prices.ETH)}</p>
+              <p>Market Cap: ~</p>
             </div>
 
             <div className="bg-gray-700 p-6 rounded-r-lg shadow flex flex-col justify-center items-center">
               <h3 className="text-2xl font-semibold mb-3">Solana (SOL)</h3>
-              <p className="mb-1">Price: $27,000</p>
-              <p>Market Cap: $800B</p>
+              <p className="mb-1">Price: {formatPrice(prices.SOL)}</p>
+              <p>Market Cap: ~</p>
             </div>
           </div>
         </div>
@@ -217,7 +247,9 @@ const Home = () => {
 
           <div className="bg-gray-700 bg-opacity-30 p-6 rounded-lg shadow-md flex flex-col justify-between min-h-[220px]">
             <div>
-              <h3 className="text-2xl font-semibold mb-3">Crypto Safety Tips</h3>
+              <h3 className="text-2xl font-semibold mb-3">
+                Crypto Safety Tips
+              </h3>
               <p className="mb-4">
                 Learn best practices to keep your crypto assets safe and secure.
               </p>
