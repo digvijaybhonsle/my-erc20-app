@@ -1,22 +1,30 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
-import { BrowserProvider, formatEther, parseEther } from "ethers";
+import { BrowserProvider, formatEther } from "ethers";
 import type { Eip1193Provider } from "ethers";
+import axios from "axios";
 import QRCode from "react-qr-code";
 import { motion } from "framer-motion";
 
 type Transaction = {
-  id: number;
+  _id?: string;
   type: "Send" | "Receive" | "Swap";
   amount: string;
   to?: string;
   from?: string;
-  time: string;
+  time?: string;
+  tokenSymbol?: string;
+  txHash?: string;
+  details?: string;
 };
 
 declare global {
   interface Window {
     ethereum?: {
-      request?: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      request?: (args: {
+        method: string;
+        params?: unknown[];
+      }) => Promise<unknown>;
     };
   }
 }
@@ -26,11 +34,70 @@ const Trade = () => {
   const [balance, setBalance] = useState("0");
   const [sendTo, setSendTo] = useState("");
   const [amountToSend, setAmountToSend] = useState("");
-  const [swapTo, setSwapTo] = useState<"ETH" | "USDC" | "DAI">("USDC");
+  const [swapTo, setSwapTo] = useState<"USDC" | "DAI">("USDC");
   const [swapAmount, setSwapAmount] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
+    []
+  );
+
+  // Send ETH via backend
+  const handleSend = async () => {
+    if (!walletAddress || !sendTo || !amountToSend) return;
+    setIsSending(true);
+    try {
+      const res = await axios.post("/api/trade/send", {
+        to: sendTo,
+        amount: amountToSend,
+        walletAddress,
+      });
+      setRecentTransactions((prev) => [
+        {
+          type: "Send",
+          amount: `-${amountToSend} ETH`,
+          to: sendTo,
+          time: new Date().toLocaleString(),
+          txHash: res.data.txHash,
+        },
+        ...prev,
+      ]);
+      setSendTo("");
+      setAmountToSend("");
+    } catch (err) {
+      console.error("Send failed", err);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // Swap ETH via backend
+  const handleSwap = async () => {
+    if (!walletAddress || !swapAmount || !swapTo) return;
+    setIsSwapping(true);
+    try {
+      const res = await axios.post("http://localhost:5000/api/trade/swap", {
+        fromToken: "ETH",
+        toToken: swapTo,
+        amount: swapAmount,
+        walletAddress,
+      });
+      setRecentTransactions((prev) => [
+        {
+          type: "Swap",
+          amount: `${swapAmount} ETH → ${swapTo}`,
+          time: new Date().toLocaleString(),
+          txHash: res.data.txHash,
+        },
+        ...prev,
+      ]);
+      setSwapAmount("");
+    } catch (err) {
+      console.error("Swap failed", err);
+    } finally {
+      setIsSwapping(false);
+    }
+  };
 
   // Fetch wallet & balance
   useEffect(() => {
@@ -38,60 +105,39 @@ const Trade = () => {
       const eth = window.ethereum;
       if (eth?.request) {
         try {
-          const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
+          const accounts = (await eth.request({
+            method: "eth_requestAccounts",
+          })) as string[];
           setWalletAddress(accounts[0]);
 
           const provider = new BrowserProvider(eth as Eip1193Provider);
           const bal = await provider.getBalance(accounts[0]);
           setBalance(formatEther(bal));
-        } catch {
-          console.error("Wallet fetch error");
+
+          // Load transactions
+          const res = await axios.get(`/api/trade/${accounts[0]}/transactions`);
+
+          // Check if res.data is an array before mapping
+          if (Array.isArray(res.data)) {
+            setRecentTransactions(
+              res.data.map((t: any) => ({
+                ...t,
+                time: new Date(t.timestamp).toLocaleString(),
+                amount:
+                  t.type === "Send"
+                    ? `-${t.amount} ${t.tokenSymbol}`
+                    : `${t.amount} ${t.tokenSymbol}`,
+              }))
+            );
+          } else {
+            console.error("Expected an array but received", res.data);
+          }
+        } catch (err) {
+          console.error("Wallet or transaction fetch error", err);
         }
       }
     })();
   }, []);
-
-  // Send ETH
-  const handleSend = async () => {
-    if (!window.ethereum?.request) return;
-    setIsSending(true);
-    try {
-      const provider = new BrowserProvider(window.ethereum as Eip1193Provider);
-      const signer = await provider.getSigner();
-      const tx = await signer.sendTransaction({
-        to: sendTo,
-        value: parseEther(amountToSend),
-      });
-      await tx.wait();
-      setRecentTransactions((prev) => [
-        { id: Date.now(), type: "Send", amount: `-${amountToSend} ETH`, to: sendTo, time: "Just now" },
-        ...prev,
-      ]);
-      setSendTo("");
-      setAmountToSend("");
-    } catch {
-      console.error("Send Error");
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  // Swap ETH → swapTo
-  const handleSwap = async () => {
-    if (!window.ethereum?.request) return;
-    setIsSwapping(true);
-    try {
-      // Swap logic placeholder—replace with contract call
-      await new Promise((r) => setTimeout(r, 1000));
-      setRecentTransactions((prev) => [
-        { id: Date.now(), type: "Swap", amount: `${swapAmount} ETH → ${swapTo}`, time: "Just now" },
-        ...prev,
-      ]);
-      setSwapAmount("");
-    } finally {
-      setIsSwapping(false);
-    }
-  };
 
   return (
     <div className="min-h-screen text-white px-6 py-12">
@@ -125,7 +171,7 @@ const Trade = () => {
       <div className="flex flex-col sm:flex-row gap-6 justify-center mb-12">
         {/* Send */}
         <motion.div
-          className="bg-gray-800 p-6 rounded-xl shadow-xl space-y-4 w-full max-w-md"
+          className="bg-gray-800 p-6 rounded-xl shadow-xl space-y-4 w-full sm:w-1/3 max-w-md"
           whileHover={{ scale: 1.02 }}
         >
           <h2 className="text-2xl text-yellow-300 font-bold">Send ETH</h2>
@@ -144,9 +190,7 @@ const Trade = () => {
           <button
             onClick={handleSend}
             disabled={isSending}
-            className={`w-full bg-yellow-500 py-3 rounded-lg font-bold ${
-              isSending ? "opacity-50" : "hover:scale-105"
-            } transition`}
+            className={`w-full bg-yellow-500 py-3 rounded-lg font-bold ${isSending ? "opacity-50" : "hover:scale-105"} transition`}
           >
             {isSending ? "Sending..." : "Send"}
           </button>
@@ -154,19 +198,25 @@ const Trade = () => {
 
         {/* Receive */}
         <motion.div
-          className="bg-gray-800 p-6 rounded-xl shadow-xl text-center w-full max-w-md"
+          className="bg-gray-800 p-6 rounded-xl shadow-xl text-center w-full sm:w-1/3 max-w-md"
           whileHover={{ scale: 1.02 }}
         >
           <h2 className="text-2xl text-green-300 font-bold">Receive ETH</h2>
           {walletAddress && (
-            <QRCode value={walletAddress} className="my-6" style={{marginLeft: "150px"}} size={100} bgColor="#1f2937" fgColor="#facc15" />
+            <QRCode
+              value={walletAddress}
+              className="my-6 mx-auto"
+              size={100}
+              bgColor="#1f2937"
+              fgColor="#facc15"
+            />
           )}
           <p className="mt-3 text-gray-400 break-all">{walletAddress}</p>
         </motion.div>
 
         {/* Swap */}
         <motion.div
-          className="bg-gray-800 p-6 rounded-xl shadow-xl space-y-4 w-full max-w-md"
+          className="bg-gray-800 p-6 rounded-xl shadow-xl space-y-4 w-full sm:w-1/3 max-w-md"
           whileHover={{ scale: 1.02 }}
         >
           <h2 className="text-2xl text-purple-300 font-bold">Swap ETH</h2>
@@ -179,18 +229,16 @@ const Trade = () => {
           <select
             className="w-full p-3 rounded-lg bg-gray-700 text-white"
             value={swapTo}
-            onChange={(e) => setSwapTo(e.target.value as "ETH" | "USDC" | "DAI")}
+            onChange={(e) => setSwapTo(e.target.value as "USDC" | "DAI")}
           >
-            {["ETH", "USDC", "DAI"].map((sym) => (
+            {["USDC", "DAI"].map((sym) => (
               <option key={sym}>{sym}</option>
             ))}
           </select>
           <button
             onClick={handleSwap}
             disabled={isSwapping}
-            className={`w-full bg-purple-600 py-3 rounded-lg font-bold ${
-              isSwapping ? "opacity-50" : "hover:scale-105"
-            } transition`}
+            className={`w-full bg-purple-600 py-3 rounded-lg font-bold ${isSwapping ? "opacity-50" : "hover:scale-105"} transition`}
           >
             {isSwapping ? "Swapping..." : "Swap"}
           </button>
@@ -199,12 +247,14 @@ const Trade = () => {
 
       {/* Recent Transactions */}
       <div className="max-w-4xl mx-auto text-center">
-        <h2 className="text-4xl font-semibold text-yellow-300 mb-6">Recent Transactions</h2>
+        <h2 className="text-4xl font-semibold text-yellow-300 mb-6">
+          Recent Transactions
+        </h2>
         <div className="space-y-4">
           {recentTransactions.length ? (
-            recentTransactions.map((tx) => (
+            recentTransactions.map((tx, i) => (
               <motion.div
-                key={tx.id}
+                key={i}
                 className="bg-gray-800 p-4 rounded-lg flex justify-between items-center"
                 initial={{ opacity: 0, x: -30 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -215,10 +265,16 @@ const Trade = () => {
                   <p className="text-gray-400 text-sm">{tx.time}</p>
                 </div>
                 <div className="text-right">
-                  <p className={tx.type === "Send" ? "text-red-400" : "text-green-400"}>
+                  <p
+                    className={
+                      tx.type === "Send" ? "text-red-400" : "text-green-400"
+                    }
+                  >
                     {tx.amount}
                   </p>
-                  <p className="text-gray-500 text-sm">{tx.to || tx.from}</p>
+                  <p className="text-gray-500 text-sm">
+                    {tx.to || tx.from || tx.tokenSymbol}
+                  </p>
                 </div>
               </motion.div>
             ))

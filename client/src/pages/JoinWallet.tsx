@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
 import { connectWallet } from "../services/wallet";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface JoinWalletProps {
   setIsWalletConnected: (isConnected: boolean, address?: string) => void;
@@ -11,21 +12,23 @@ export default function JoinWallet({ setIsWalletConnected }: JoinWalletProps) {
   const [manualAddress, setManualAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<boolean>(false);
 
   const handleConnect = async () => {
     if (!(window as any).ethereum) {
-      setError("MetaMask not detected. Please install MetaMask first.");
+      setError("MetaMask not detected. Please install MetaMask.");
       return;
     }
 
     try {
       setError(null);
+      setSuccess(false);
       setLoading(true);
 
-      // Prompt user to connect
       const { address } = await connectWallet();
       setAccount(address);
       setIsWalletConnected(true, address);
+      setSuccess(true);
     } catch (err: any) {
       console.error("Wallet connection failed:", err);
       if (err.code === 4001) {
@@ -46,6 +49,7 @@ export default function JoinWallet({ setIsWalletConnected }: JoinWalletProps) {
     setError(null);
     setAccount(manualAddress);
     setIsWalletConnected(true, manualAddress);
+    setSuccess(true);
   };
 
   const formatAddress = (addr: string) =>
@@ -53,21 +57,58 @@ export default function JoinWallet({ setIsWalletConnected }: JoinWalletProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="bg-gray-700 bg-opacity-60 backdrop-blur-md p-10 rounded-2xl shadow-lg max-w-md w-full text-center text-white space-y-6">
-        <h2 className="text-3xl font-bold text-yellow-400">Join Your Wallet</h2>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="bg-gray-700 bg-opacity-60 backdrop-blur-md p-6 sm:p-10 rounded-2xl shadow-lg max-w-md w-full text-center text-white space-y-6"
+      >
+        <motion.h2
+          initial={{ scale: 0.9 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-3xl sm:text-4xl font-bold text-yellow-400"
+        >
+          Join Your Wallet
+        </motion.h2>
 
-        {error && (
-          <div className="bg-red-600 text-white p-3 rounded">
-            {error}
-          </div>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-red-600 text-white p-3 rounded"
+            >
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* MetaMask Connect */}
+        <AnimatePresence>
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-green-600 text-white p-3 rounded"
+            >
+              Wallet connected successfully!
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <button
           onClick={handleConnect}
           disabled={loading}
-          className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-gray-900 font-semibold py-3 rounded-full transition transform hover:scale-105"
+          className={`w-full bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-gray-900 font-semibold py-3 rounded-full transition transform hover:scale-105`}
         >
+          {loading ? (
+            <motion.span
+              className="inline-block animate-spin mr-2"
+              style={{ borderTop: "2px solid #000", borderRadius: "50%", width: "1rem", height: "1rem" }}
+            />
+          ) : null}
           {loading ? "Connecting…" : "Connect with MetaMask"}
         </button>
 
@@ -96,23 +137,28 @@ export default function JoinWallet({ setIsWalletConnected }: JoinWalletProps) {
 
         {/* Connected Account Display */}
         {account && (
-          <div className="bg-gray-800 p-4 rounded-lg text-left">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-gray-800 p-4 rounded-lg text-left"
+          >
             <p className="text-gray-300">
               <span className="font-semibold text-white">Connected Account:</span>
               <br />
               <span className="text-yellow-400">{formatAddress(account)}</span>
             </p>
-          </div>
+          </motion.div>
         )}
 
-        {/* Placeholder for contract call */}
+        {/* Placeholder contract call */}
         <button
-          onClick={() => {/* your contract call here */}}
-          className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-full transition transform hover:scale-105"
+          onClick={() => alert("Check Unlock Time logic not implemented.")}
+          className={`w-full ${account ? "bg-green-500 hover:bg-green-600" : "bg-gray-500 cursor-not-allowed"} text-white font-semibold py-3 rounded-full transition transform hover:scale-105`}
+          disabled={!account}
         >
           Check Unlock Time
         </button>
-      </div>
+      </motion.div>
     </div>
   );
 }

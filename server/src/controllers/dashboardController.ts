@@ -3,32 +3,22 @@ import axios from "axios";
 import { ethers } from "ethers";
 import provider from "../utils/web3Provider";
 import { wallet } from "../web3Provider";
-import SwapArtifact from "../../abi/Swap.json";
+import LockArtifact from "../../abi/Lock.json";
 import TradeModel, { ITrade } from "../db/models/trade";
 
 const erc20Abi = ["function balanceOf(address) view returns (uint256)"];
 
 // 1. GET BALANCES
 export const getBalances: RequestHandler = async (req, res) => {
-  // assert params.address exists
   const address = req.params.address as string;
   try {
     const ethBalance = await provider.getBalance(address);
-
-    const usdcAddress = process.env.USDC_ADDRESS!;
-    const daiAddress = process.env.DAI_ADDRESS!;
-    const [usdcBal, daiBal] = await Promise.all([
-      new ethers.Contract(usdcAddress, erc20Abi, provider).balanceOf(address),
-      new ethers.Contract(daiAddress, erc20Abi, provider).balanceOf(address),
-    ]);
-
     res.json({
       eth: ethers.formatEther(ethBalance),
-      usdc: ethers.formatUnits(usdcBal, 6),
-      dai: ethers.formatUnits(daiBal, 18),
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error("Error fetching ETH balance:", err);
+    res.status(500).json({ error: err.message || "Internal Server Error" });
   }
 };
 
@@ -60,34 +50,74 @@ export const getSwapEstimate: RequestHandler = async (req, res) => {
 // 3. GET LIVE PRICES
 export const getLivePrices: RequestHandler = async (_req, res) => {
   try {
-    const response = await axios.get("https://api.delta.exchange/v2/tickers");
-    const tickers = response.data.result as any[];
-    const symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"];
-    const prices: Record<string, string> = {};
-    symbols.forEach((sym) => {
-      const entry = tickers.find((t) => t.symbol === sym);
-      if (entry) prices[sym.replace("USDT", "")] = entry.last_price;
-    });
+    const response = await axios.get(
+      "https://api.coingecko.com/api/v3/simple/price",
+      {
+        params: {
+          ids: "bitcoin,ethereum,solana",
+          vs_currencies: "usd",
+        },
+      }
+    );
+
+    const data = response.data;
+
+    const prices = {
+      BTC: data.bitcoin.usd.toString(),
+      ETH: data.ethereum.usd.toString(),
+      SOL: data.solana.usd.toString(),
+    };
+
     res.json(prices);
   } catch (err: any) {
+    console.error("Error fetching prices from CoinGecko:", err.message);
     res.status(500).json({ error: err.message });
   }
 };
 
+
+
 // 4. GET PRICE HISTORY
+
 export const getPriceHistory: RequestHandler = async (req, res) => {
-  const symbol = (req.query.symbol as string) || "ETHUSDT";
+  const symbolMap: Record<string, string> = {
+    eth: "ethereum",
+    btc: "bitcoin",
+    sol: "solana",
+    ethereum: "ethereum",
+    bitcoin: "bitcoin",
+    solana: "solana",
+  };
+
+  const rawSymbol = (req.query.symbol as string || "eth").toLowerCase();
+  const symbol = symbolMap[rawSymbol] || rawSymbol;
   const days = parseInt((req.query.range as string) || "7", 10);
+
   try {
-    const response = await axios.get("https://api.delta.exchange/v2/tickers");
-    const entry = (response.data.result as any[]).find((t) => t.symbol === symbol);
-    const labels = Array.from({ length: days }, (_, i) => `Day ${i + 1}`);
-    const prices = labels.map(() => (entry ? Number(entry.last_price) : 0));
+    const response = await axios.get(
+      `https://api.coingecko.com/api/v3/coins/${symbol}/market_chart`,
+      {
+        params: {
+          vs_currency: "usd",
+          days,
+        },
+      }
+    );
+
+    const pricesData = response.data.prices as [number, number][];
+    const labels = pricesData.map(([timestamp]) =>
+      new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    );
+    const prices = pricesData.map(([, price]) => parseFloat(price.toFixed(2)));
+
     res.json({ labels, prices });
   } catch (err: any) {
+    console.error("Error fetching price history:", err.message);
     res.status(500).json({ error: err.message });
   }
 };
+
+
 
 // 5. QUICK SWAP
 export const swapTokens: RequestHandler = async (req, res) => {
@@ -101,7 +131,7 @@ export const swapTokens: RequestHandler = async (req, res) => {
     const signer = wallet.connect(provider);
     const swapContract = new ethers.Contract(
       process.env.SWAP_CONTRACT_ADDRESS!,
-      (SwapArtifact as any).abi,
+      (LockArtifact as any).abi,
       signer
     );
     const tx = await swapContract.swap(

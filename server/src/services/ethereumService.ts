@@ -6,6 +6,7 @@ class EthereumService {
   private provider: ethers.JsonRpcProvider;
   private signer: ethers.Wallet;
   private contract: ethers.Contract;
+  public serverAddress: string;
 
   constructor() {
     // 1) RPC
@@ -13,6 +14,8 @@ class EthereumService {
 
     // 2) Server wallet
     this.signer = new ethers.Wallet(config.PRIVATE_KEY, this.provider);
+
+    this.serverAddress = this.signer.address;
 
     // 3) Contract
     const {

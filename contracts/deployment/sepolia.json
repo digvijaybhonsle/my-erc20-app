@@ -3,7 +3,7 @@
   "chainId": 11155111,
   "contract": {
     "name": "Lock",
-    "address": "0x001C0C45EC0A62e6d6D146A17e72421aea20D84E",
+    "address": "0xd8C90935a43486896bCbB98732c347136f3294D2",
     "abi": [
       {
         "inputs": [
@@ -73,6 +73,6 @@
         "type": "receive"
       }
     ],
-    "deployedAt": "2025-05-11T08:14:01.737Z"
+    "deployedAt": "2025-05-11T19:12:23.854Z"
   }
 }

@@ -11,6 +11,7 @@ import {
   Legend,
 } from "chart.js";
 import { motion } from "framer-motion";
+import type { ChartOptions } from "chart.js";
 
 ChartJS.register(
   LineElement,
@@ -24,7 +25,10 @@ ChartJS.register(
 declare global {
   interface Window {
     ethereum?: {
-      request?: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      request?: (args: {
+        method: string;
+        params?: unknown[];
+      }) => Promise<unknown>;
     };
   }
 }
@@ -40,7 +44,11 @@ const Dashboard = () => {
   const [daiBalance, setDaiBalance] = useState("0.00");
 
   // Live prices
-  const [livePrices, setLivePrices] = useState<{ BTC: string; ETH: string; SOL: string }>({
+  const [livePrices, setLivePrices] = useState<{
+    BTC: string;
+    ETH: string;
+    SOL: string;
+  }>({
     BTC: "--",
     ETH: "--",
     SOL: "--",
@@ -64,7 +72,9 @@ const Dashboard = () => {
       const eth = window.ethereum;
       if (eth?.request) {
         try {
-          const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
+          const accounts = (await eth.request({
+            method: "eth_requestAccounts",
+          })) as string[];
           setWalletAddress(accounts[0]);
         } catch {
           console.warn("User denied wallet access");
@@ -97,8 +107,11 @@ const Dashboard = () => {
   // 4. Fetch price history for chart
   useEffect(() => {
     axios
-      .get("/api/dashboard/price-history", { params: { symbol: "ETHUSDT", range: 7 } })
+      .get("/api/dashboard/price-history", {
+        params: { symbol: "eth", range: 7 },
+      })
       .then((res) => {
+        console.log("Chart data:", res.data);
         setChartLabels(res.data.labels);
         setChartPrices(res.data.prices);
       })
@@ -109,7 +122,11 @@ const Dashboard = () => {
   useEffect(() => {
     if (!amount) return;
     axios
-      .post("/api/dashboard/estimate", { fromToken: "ETH", toToken: swapTo, amount })
+      .post("/api/dashboard/estimate", {
+        fromToken: "ETH",
+        toToken: swapTo,
+        amount,
+      })
       .then((res) => {
         setReceivedAmount(res.data.receivedAmount);
         setGasFee(res.data.gasFee);
@@ -121,7 +138,12 @@ const Dashboard = () => {
   // Handlers
   const handleSwap = () => {
     axios
-      .post("/api/dashboard/swap", { fromToken: "ETH", toToken: swapTo, amount, walletAddress })
+      .post("/api/dashboard/swap", {
+        fromToken: "ETH",
+        toToken: swapTo,
+        amount,
+        walletAddress,
+      })
       .then(() => {
         // refresh balances after swap
         return axios.get(`/api/dashboard/balances/${walletAddress}`);
@@ -149,28 +171,81 @@ const Dashboard = () => {
     ],
   };
 
-  const options = {
+  const options: ChartOptions<"line"> = {
     responsive: true,
-    animation: { duration: 1500, easing: "easeOutQuart" as const },
+    maintainAspectRatio: false,
+    animation: {
+      duration: 1000,
+      easing: "easeInOutQuad",
+    },
     plugins: {
-      legend: { labels: { color: "#facc15", font: { size: 14 } } },
-      tooltip: { backgroundColor: "#1f2937", titleColor: "#facc15", bodyColor: "#f9fafb" },
+      legend: {
+        display: true,
+        labels: {
+          color: "#facc15",
+          font: { size: 14 },
+        },
+      },
+      tooltip: {
+        backgroundColor: "#1f2937",
+        titleColor: "#facc15",
+        bodyColor: "#f9fafb",
+        cornerRadius: 6,
+        padding: 12,
+      },
     },
     scales: {
-      x: { ticks: { color: "#d1d5db" }, grid: { color: "rgba(255,255,255,0.1)" } },
-      y: { ticks: { color: "#d1d5db" }, grid: { color: "rgba(255,255,255,0.1)" } },
+      x: {
+        type: "category", // Explicitly set as category for "Days"
+        title: {
+          display: true,
+          text: "Days",
+          color: "#facc15",
+          font: { size: 14 },
+        },
+        ticks: {
+          color: "#d1d5db",
+        },
+        grid: {
+          color: "rgba(255,255,255,0.05)",
+        },
+      },
+      y: {
+        type: "linear", // Explicitly set as linear for numeric prices
+        title: {
+          display: true,
+          text: "Price (USD)",
+          color: "#facc15",
+          font: { size: 14 },
+        },
+        ticks: {
+          color: "#d1d5db",
+          callback: function (tickValue: string | number): string {
+            const value =
+              typeof tickValue === "string" ? parseFloat(tickValue) : tickValue;
+            return `$${value.toFixed(2)}`;
+          },
+        },
+        grid: {
+          color: "rgba(255,255,255,0.05)",
+        },
+      },
     },
-  };
+  } as ChartOptions<"line">;
 
   return (
     <div className="min-h-screen text-white px-6 py-10">
       {/* Header */}
       <div className="text-center mb-10">
-        <h1 className="text-5xl font-bold text-yellow-500 mb-2">Dashboard</h1>
-        <p className="text-gray-400 text-xl mb-4">Manage your wallet and transactions</p>
+        <h1 className="text-4xl sm:text-5xl font-bold text-yellow-500 mb-2">
+          Dashboard
+        </h1>
+        <p className="text-gray-400 text-lg sm:text-xl mb-4">
+          Manage your wallet and transactions
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
         {/* Left Panel */}
         <motion.div
           className="bg-gray-800 p-6 rounded-xl shadow-lg flex flex-col justify-between"
@@ -180,7 +255,7 @@ const Dashboard = () => {
         >
           {/* Swap Form */}
           <div className="space-y-4">
-            <label className="text-2xl font-semibold">Swap To</label>
+            <label className="text-xl sm:text-2xl font-semibold">Swap To</label>
             <select
               className="w-full p-3 bg-gray-700 text-white rounded-lg"
               value={swapTo}
@@ -215,10 +290,19 @@ const Dashboard = () => {
 
           {/* More Info */}
           <div className="bg-gray-700 p-4 rounded-lg mt-6">
-            <h2 className="text-xl font-semibold text-yellow-500 mb-2">More Information</h2>
-            <p>Received: <span className="text-green-400">{receivedAmount}</span></p>
-            <p>Gas Fee: <span className="text-red-400">{gasFee}</span></p>
-            <p>Price Impact: <span className="text-yellow-500">{priceImpact}</span></p>
+            <h2 className="text-xl font-semibold text-yellow-500 mb-2">
+              More Information
+            </h2>
+            <p>
+              Received: <span className="text-green-400">{receivedAmount}</span>
+            </p>
+            <p>
+              Gas Fee: <span className="text-red-400">{gasFee}</span>
+            </p>
+            <p>
+              Price Impact:{" "}
+              <span className="text-yellow-500">{priceImpact}</span>
+            </p>
           </div>
 
           {/* Action Buttons */}
@@ -234,8 +318,10 @@ const Dashboard = () => {
         <div className="space-y-8">
           {/* Live Prices */}
           <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
-            <h2 className="text-2xl font-bold text-yellow-400 mb-4">Live Prices</h2>
-            <div className="grid grid-cols-3 gap-4 text-center text-white">
+            <h2 className="text-2xl font-bold text-yellow-400 mb-4">
+              Live Prices
+            </h2>
+            <div className="grid grid-cols-3 sm:grid-cols-1 gap-4 text-center text-white">
               {(["BTC", "ETH", "SOL"] as const).map((sym) => (
                 <div key={sym} className="bg-gray-700 p-4 rounded-lg">
                   <h3 className="text-xl">{sym}</h3>
@@ -247,8 +333,18 @@ const Dashboard = () => {
 
           {/* Chart */}
           <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
-            <h2 className="text-2xl font-bold text-yellow-400 mb-4">Price History</h2>
-            <Line data={data} options={options} />
+            <h2 className="text-2xl font-bold text-yellow-400 mb-4">
+              Price History
+            </h2>
+            <div className="relative h-72 sm:h-96">
+              {chartLabels.length && chartPrices.length ? (
+                <Line data={data} options={options} />
+              ) : (
+                <p className="text-gray-400 text-center pt-12">
+                  Loading chart data...
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>

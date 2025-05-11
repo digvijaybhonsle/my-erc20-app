@@ -1,44 +1,48 @@
-import { config } from "./src/config";
 import express from "express";
-import { connectDB } from "./src/db";
-import { rateLimiter } from "./src/middleware/rateLimit";
-import { errorHandler } from "./src/middleware/errorHandler";
-import walletRoutes from "./src/routes/wallet";
-import tradesRoutes from "./src/routes/trades";
+import dotenv from "dotenv";
+import cors from "cors";
+import mongoose from "mongoose";
 import dashboardRoutes from "./src/routes/dashboard";
+import walletRoutes from "./src/routes/wallet";
+import tokenRoutes from "./src/routes/token";
+import tradeRoutes from "./src/routes/trades";
 
-async function startServer() {
-    try {
-        await connectDB();
-        console.log("✅ Connected to MongoDB");
 
-        const app = express();
+dotenv.config();
 
-        // Middleware
-        app.use(express.json());
-        app.use(rateLimiter);
+const app = express();
+const PORT = process.env.PORT || 5000;
 
-        // Routes
-        app.use("/api/wallet", walletRoutes);
-        app.use("/api/wallet", tradesRoutes);   
-        app.use("/api/dashboard", dashboardRoutes);   // GET /api/wallet/:address/trades
+// Middleware
+app.use(cors());
+app.use(express.json());
 
-        // Default route
-        app.get("/", (req, res) => {
-            res.send("API is running 🚀");
-        });
+// Health check
+app.get("/", (_req, res) => {
+  res.json({ message: "Server is running" });
+});
 
-        // Error handling middleware
-        app.use(errorHandler);
 
-        // Start server
-        app.listen(config.PORT, () => {
-            console.log(`Server is running on port ${config.PORT}`);
-        });
-    } catch (error) {
-        console.error("Error starting server:", error);
-        process.exit(1); // Exit process with failure code
-    }
-}
+// API Routes
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/token", tokenRoutes);
+app.use("/api/trade", tradeRoutes);
 
-startServer();
+// Error handler (optional)
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(err.stack);
+  res.status(500).json({ error: "Something went wrong" });
+});
+
+// Connect to MongoDB and start server
+mongoose.connect(process.env.DB_URI!)
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server listening on http://localhost:${PORT}`);
+      console.log("✅ MongoDB connection successful");
+    });
+  })
+  .catch(err => {
+    console.error("❌ MongoDB connection failed:", err);
+  });
