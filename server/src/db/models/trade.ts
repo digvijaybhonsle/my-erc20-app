@@ -1,14 +1,14 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 // Define the Trade interface extending mongoose.Document
-export interface ITrade extends Document {
+export interface ITrade {
   walletAddress: string;
-  action: 'swap' | 'receive' | 'send';
   details: string;
   amount: string;
   tokenSymbol: string;
   txHash: string;
   timestamp: Date;
+  type: "Send" | "Receive" | "Swap";  // ← add this
 }
 
 // Create the Trade schema

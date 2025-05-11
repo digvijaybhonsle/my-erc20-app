@@ -1,11 +1,11 @@
 import { config } from "./src/config";
 import express from "express";
 import { connectDB } from "./src/db";
-import routes from "./src/routes";
 import { rateLimiter } from "./src/middleware/rateLimit";
 import { errorHandler } from "./src/middleware/errorHandler";
 import walletRoutes from "./src/routes/wallet";
 import tradesRoutes from "./src/routes/trades";
+import dashboardRoutes from "./src/routes/dashboard";
 
 async function startServer() {
     try {
@@ -20,7 +20,8 @@ async function startServer() {
 
         // Routes
         app.use("/api/wallet", walletRoutes);
-        app.use("/api/wallet", tradesRoutes);      // GET /api/wallet/:address/trades
+        app.use("/api/wallet", tradesRoutes);   
+        app.use("/api/dashboard", dashboardRoutes);   // GET /api/wallet/:address/trades
 
         // Default route
         app.get("/", (req, res) => {
