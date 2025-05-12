@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
-import { BrowserProvider, formatEther } from "ethers";
-import type { Eip1193Provider } from "ethers";
+import { ethers } from "ethers"; 
 import axios from "axios";
 import QRCode from "react-qr-code";
 import { motion } from "framer-motion";
@@ -18,17 +17,6 @@ type Transaction = {
   details?: string;
 };
 
-declare global {
-  interface Window {
-    ethereum?: {
-      request?: (args: {
-        method: string;
-        params?: unknown[];
-      }) => Promise<unknown>;
-    };
-  }
-}
-
 const Trade = () => {
   const [walletAddress, setWalletAddress] = useState("");
   const [balance, setBalance] = useState("0");
@@ -38,20 +26,24 @@ const Trade = () => {
   const [swapAmount, setSwapAmount] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
-    []
-  );
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // Send ETH via backend
   const handleSend = async () => {
-    if (!walletAddress || !sendTo || !amountToSend) return;
+    if (!walletAddress || !sendTo || !amountToSend) {
+      setError("Please fill in all fields for sending ETH");
+      return;
+    }
     setIsSending(true);
     try {
-      const res = await axios.post("/api/trade/send", {
-        to: sendTo,
-        amount: amountToSend,
-        walletAddress,
-      });
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/trade/send`,
+        {
+          to: sendTo,
+          amount: amountToSend,
+          walletAddress,
+        }
+      );
       setRecentTransactions((prev) => [
         {
           type: "Send",
@@ -64,24 +56,31 @@ const Trade = () => {
       ]);
       setSendTo("");
       setAmountToSend("");
-    } catch (err) {
+      setError(null);
+    } catch (err: any) {
       console.error("Send failed", err);
+      setError(err.response?.data?.error || "Failed to send ETH");
     } finally {
       setIsSending(false);
     }
   };
 
-  // Swap ETH via backend
   const handleSwap = async () => {
-    if (!walletAddress || !swapAmount || !swapTo) return;
+    if (!walletAddress || !swapAmount || !swapTo) {
+      setError("Please fill in all fields for swapping tokens");
+      return;
+    }
     setIsSwapping(true);
     try {
-      const res = await axios.post("http://localhost:5000/api/trade/swap", {
-        fromToken: "ETH",
-        toToken: swapTo,
-        amount: swapAmount,
-        walletAddress,
-      });
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/trade/swap`,
+        {
+          fromToken: "ETH",
+          toToken: swapTo,
+          amount: swapAmount,
+          walletAddress,
+        }
+      );
       setRecentTransactions((prev) => [
         {
           type: "Swap",
@@ -92,52 +91,67 @@ const Trade = () => {
         ...prev,
       ]);
       setSwapAmount("");
-    } catch (err) {
+      setError(null);
+    } catch (err: any) {
       console.error("Swap failed", err);
+      setError(err.response?.data?.error || "Failed to swap tokens");
     } finally {
       setIsSwapping(false);
     }
   };
 
-  // Fetch wallet & balance
   useEffect(() => {
-    (async () => {
-      const eth = window.ethereum;
-      if (eth?.request) {
-        try {
-          const accounts = (await eth.request({
-            method: "eth_requestAccounts",
-          })) as string[];
-          setWalletAddress(accounts[0]);
-
-          const provider = new BrowserProvider(eth as Eip1193Provider);
-          const bal = await provider.getBalance(accounts[0]);
-          setBalance(formatEther(bal));
-
-          // Load transactions
-          const res = await axios.get(`/api/trade/${accounts[0]}/transactions`);
-
-          // Check if res.data is an array before mapping
-          if (Array.isArray(res.data)) {
-            setRecentTransactions(
-              res.data.map((t: any) => ({
-                ...t,
-                time: new Date(t.timestamp).toLocaleString(),
-                amount:
-                  t.type === "Send"
-                    ? `-${t.amount} ${t.tokenSymbol}`
-                    : `${t.amount} ${t.tokenSymbol}`,
-              }))
-            );
-          } else {
-            console.error("Expected an array but received", res.data);
-          }
-        } catch (err) {
-          console.error("Wallet or transaction fetch error", err);
-        }
+    const connectWallet = async () => {
+      const ethereum = window.ethereum;
+      if (!ethereum || typeof ethereum.request !== "function") {
+        setError("No Ethereum provider detected. Please install MetaMask.");
+        return;
       }
-    })();
+
+      try {
+        const accounts = (await ethereum.request({
+          method: "eth_requestAccounts",
+          params: [],
+        })) as string[];
+
+        if (accounts.length === 0) {
+          setError("No accounts found. Please connect your wallet.");
+          return;
+        }
+        setWalletAddress(accounts[0]);
+
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const bal = await provider.getBalance(accounts[0]);
+        setBalance(ethers.utils.formatEther(bal));
+
+        const res = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/trade/${accounts[0]}/transactions`
+        );
+
+        if (Array.isArray(res.data)) {
+          setRecentTransactions(
+            res.data.map((t: any) => ({
+              ...t,
+              time: new Date(t.timestamp).toLocaleString(),
+              amount:
+                t.type === "Send"
+                  ? `-${t.amount} ${t.tokenSymbol}`
+                  : `${t.amount} ${t.tokenSymbol}`,
+            }))
+          );
+        } else {
+          console.error("Expected an array but received", res.data);
+          setError("Failed to fetch transactions");
+        }
+      } catch (err: any) {
+        console.error("Wallet or transaction fetch error", err);
+        setError(err.message || "Failed to connect wallet or fetch data");
+      }
+    };
+
+    connectWallet();
   }, []);
+
 
   return (
     <div className="min-h-screen text-white px-6 py-12">
@@ -147,8 +161,14 @@ const Trade = () => {
         transition={{ duration: 0.5 }}
         className="text-5xl font-bold text-yellow-400 mb-8 text-center"
       >
-        My Wallet
+        Trade
       </motion.h1>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+          {error}
+        </div>
+      )}
 
       {/* Wallet Info */}
       <motion.div

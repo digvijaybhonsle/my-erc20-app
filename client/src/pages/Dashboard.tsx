@@ -87,7 +87,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (!walletAddress) return;
     axios
-      .get(`/api/dashboard/balances/${walletAddress}`)
+      .get(`${import.meta.env.VITE_BACKEND_URL}/api/dashboard/balances/${walletAddress}`)
       .then((res) => {
         setEthBalance(res.data.eth);
         setUsdcBalance(res.data.usdc);
@@ -99,7 +99,7 @@ const Dashboard = () => {
   // 3. Fetch live market prices once
   useEffect(() => {
     axios
-      .get("/api/dashboard/prices")
+      .get(`${import.meta.env.VITE_BACKEND_URL}/api/dashboard/prices`)
       .then((res) => setLivePrices(res.data))
       .catch(console.error);
   }, []);
@@ -107,7 +107,7 @@ const Dashboard = () => {
   // 4. Fetch price history for chart
   useEffect(() => {
     axios
-      .get("/api/dashboard/price-history", {
+      .get(`${import.meta.env.VITE_BACKEND_URL}/api/dashboard/price-history`, {
         params: { symbol: "eth", range: 7 },
       })
       .then((res) => {
@@ -122,7 +122,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (!amount) return;
     axios
-      .post("/api/dashboard/estimate", {
+      .post(`${import.meta.env.VITE_BACKEND_URL}/api/dashboard/estimate`, {
         fromToken: "ETH",
         toToken: swapTo,
         amount,
@@ -138,7 +138,7 @@ const Dashboard = () => {
   // Handlers
   const handleSwap = () => {
     axios
-      .post("/api/dashboard/swap", {
+      .post(`${import.meta.env.VITE_BACKEND_URL}/api/dashboard/swap`, {
         fromToken: "ETH",
         toToken: swapTo,
         amount,

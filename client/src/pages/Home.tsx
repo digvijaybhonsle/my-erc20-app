@@ -19,7 +19,7 @@ const Home = () => {
 
   useEffect(() => {
     axios
-      .get("/api/dashboard/prices")
+      .get(`${import.meta.env.VITE_BACKEND_URL}/api/dashboard/prices`)
       .then((res) => setPrices(res.data))
       .catch(console.error);
   }, []);

@@ -1,11 +1,5 @@
 import { ethers } from "ethers";
 
-declare global {
-  interface Window {
-    ethereum?: ethers.providers.ExternalProvider;
-  }
-}
-
 export async function connectWallet() {
   if (!window.ethereum) {
     throw new Error("MetaMask not found");
