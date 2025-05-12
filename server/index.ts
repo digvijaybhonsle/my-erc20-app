@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 5000;
 // ✅ Add your deployed Vercel frontend URL here
 const allowedOrigins = [
   "http://localhost:5173", 
-  "https://my-erc20-app.vercel.app/" 
+  "https://my-erc20-app.vercel.app" 
 ];
 
 // Middleware
@@ -52,4 +52,5 @@ mongoose.connect(process.env.DB_URI!)
   })
   .catch(err => {
     console.error("❌ MongoDB connection failed:", err);
+    process.exit(1);  // Exit the process in case of failure
   });

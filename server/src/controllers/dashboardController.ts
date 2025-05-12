@@ -55,7 +55,7 @@ export const getLivePrices: RequestHandler = async (_req, res) => {
         'User-Agent': 'my-erc21-app',
       },
       params: {
-        ids: 'ethereum,bitcoin,solana', // Added bitcoin and solana
+        ids: 'ethereum,bitcoin,solana',
         vs_currencies: 'usd',
       },
     });
@@ -63,25 +63,11 @@ export const getLivePrices: RequestHandler = async (_req, res) => {
     const data = response.data;
 
     // Check if the data for each token exists before accessing the 'usd' field
-    const prices: Record<string, string> = {};
+    const prices: Record<string, string | null> = {};
 
-    if (data.bitcoin?.usd) {
-      prices.BTC = data.bitcoin.usd.toString();
-    } else {
-      prices.BTC = 'N/A';
-    }
-
-    if (data.ethereum?.usd) {
-      prices.ETH = data.ethereum.usd.toString();
-    } else {
-      prices.ETH = 'N/A';
-    }
-
-    if (data.solana?.usd) {
-      prices.SOL = data.solana.usd.toString();
-    } else {
-      prices.SOL = 'N/A';
-    }
+    prices.BTC = data.bitcoin?.usd ? data.bitcoin.usd.toString() : null;
+    prices.ETH = data.ethereum?.usd ? data.ethereum.usd.toString() : null;
+    prices.SOL = data.solana?.usd ? data.solana.usd.toString() : null;
 
     res.json(prices);
   } catch (err: any) {
@@ -91,11 +77,8 @@ export const getLivePrices: RequestHandler = async (_req, res) => {
 };
 
 
-
-
 // 4. GET PRICE HISTORY
-
-export const getPriceHistory: RequestHandler = async (req, res) => {
+export const getPriceHistory: RequestHandler = async (req, res): Promise<void> => {
   const symbolMap: Record<string, string> = {
     eth: "ethereum",
     btc: "bitcoin",
@@ -109,6 +92,12 @@ export const getPriceHistory: RequestHandler = async (req, res) => {
   const symbol = symbolMap[rawSymbol] || rawSymbol;
   const days = parseInt((req.query.range as string) || "7", 10);
 
+  // Validate the 'days' parameter to ensure it's a valid number
+  if (isNaN(days) || days <= 0) {
+    res.status(400).json({ error: "Invalid 'range' parameter. It should be a positive integer." });
+    return; // Ensure early return for invalid data
+  }
+
   try {
     const response = await axios.get(
       `https://api.coingecko.com/api/v3/coins/${symbol}/market_chart`,
@@ -117,16 +106,24 @@ export const getPriceHistory: RequestHandler = async (req, res) => {
           'User-Agent': 'my-erc21-app',
         },
         params: {
-          ids: 'ethereum',
-          vs_currencies: 'usd',
+          vs_currency: 'usd',
+          days: days.toString(),
         },
       }
     );
 
     const pricesData = response.data.prices as [number, number][];
-    const labels = pricesData.map(([timestamp]) =>
-      new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-    );
+
+    // Ensure timestamp is valid before processing
+    const labels = pricesData.map(([timestamp]) => {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    });
+
+    // Map prices to float with 2 decimal places
     const prices = pricesData.map(([, price]) => parseFloat(price.toFixed(2)));
 
     res.json({ labels, prices });
@@ -135,6 +132,8 @@ export const getPriceHistory: RequestHandler = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
 
 
 
