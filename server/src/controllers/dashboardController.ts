@@ -47,13 +47,18 @@ export const getSwapEstimate: RequestHandler = async (req, res) => {
   }
 };
 
-// 3. GET LIVE PRICES
+// Common headers for all CoinGecko requests
+const COINGECKO_HEADERS = {
+  'User-Agent': 'my-erc20-app/1.0 (digvijaybhonsle007@gmail.com)',
+  'Accept': 'application/json',
+};
+
+// === 3. GET LIVE PRICES ===
 export const getLivePrices: RequestHandler = async (_req, res) => {
   try {
     const response = await axios.get('https://api.coingecko.com/api/v3/simple/price', {
-      headers: {
-        'User-Agent': 'my-erc21-app',
-      },
+      headers: COINGECKO_HEADERS,
+      timeout: 5000,
       params: {
         ids: 'ethereum,bitcoin,solana',
         vs_currencies: 'usd',
@@ -62,23 +67,22 @@ export const getLivePrices: RequestHandler = async (_req, res) => {
 
     const data = response.data;
 
-    // Check if the data for each token exists before accessing the 'usd' field
-    const prices: Record<string, string | null> = {};
-
-    prices.BTC = data.bitcoin?.usd ? data.bitcoin.usd.toString() : null;
-    prices.ETH = data.ethereum?.usd ? data.ethereum.usd.toString() : null;
-    prices.SOL = data.solana?.usd ? data.solana.usd.toString() : null;
+    const prices: Record<string, string | null> = {
+      BTC: data.bitcoin?.usd?.toString() || null,
+      ETH: data.ethereum?.usd?.toString() || null,
+      SOL: data.solana?.usd?.toString() || null,
+    };
 
     res.json(prices);
   } catch (err: any) {
-    console.error("Error fetching prices from CoinGecko:", err.message);
-    res.status(500).json({ error: err.message });
+    console.error("Error fetching prices from CoinGecko:", err);
+    res.status(500).json({ error: "Failed to fetch live prices" });
   }
 };
 
 
-// 4. GET PRICE HISTORY
-export const getPriceHistory: RequestHandler = async (req, res): Promise<void> => {
+// === 4. GET PRICE HISTORY ===
+export const getPriceHistory: RequestHandler = async (req, res) => {
   const symbolMap: Record<string, string> = {
     eth: "ethereum",
     btc: "bitcoin",
@@ -92,19 +96,17 @@ export const getPriceHistory: RequestHandler = async (req, res): Promise<void> =
   const symbol = symbolMap[rawSymbol] || rawSymbol;
   const days = parseInt((req.query.range as string) || "7", 10);
 
-  // Validate the 'days' parameter to ensure it's a valid number
   if (isNaN(days) || days <= 0) {
     res.status(400).json({ error: "Invalid 'range' parameter. It should be a positive integer." });
-    return; // Ensure early return for invalid data
+    return;
   }
 
   try {
     const response = await axios.get(
       `https://api.coingecko.com/api/v3/coins/${symbol}/market_chart`,
       {
-        headers: {
-          'User-Agent': 'my-erc21-app',
-        },
+        headers: COINGECKO_HEADERS,
+        timeout: 5000,
         params: {
           vs_currency: 'usd',
           days: days.toString(),
@@ -114,27 +116,23 @@ export const getPriceHistory: RequestHandler = async (req, res): Promise<void> =
 
     const pricesData = response.data.prices as [number, number][];
 
-    // Ensure timestamp is valid before processing
-    const labels = pricesData.map(([timestamp]) => {
-      const date = new Date(timestamp);
-      if (isNaN(date.getTime())) {
-        return 'Invalid Date';
-      }
-      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    });
+    const labels = pricesData.map(([timestamp]) =>
+      new Date(timestamp).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    );
 
-    // Map prices to float with 2 decimal places
-    const prices = pricesData.map(([, price]) => parseFloat(price.toFixed(2)));
+    const prices = pricesData.map(([, price]) =>
+      parseFloat(price.toFixed(2))
+    );
 
     res.json({ labels, prices });
   } catch (err: any) {
-    console.error("Error fetching price history:", err.message);
-    res.status(500).json({ error: err.message });
+  console.error("Error fetching prices history from CoinGecko:", err);
+  res.status(500).json({ error: "Failed to fetch price history" });
   }
 };
-
-
-
 
 
 // 5. QUICK SWAP
