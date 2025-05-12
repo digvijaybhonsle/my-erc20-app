@@ -55,18 +55,33 @@ export const getLivePrices: RequestHandler = async (_req, res) => {
         'User-Agent': 'my-erc21-app',
       },
       params: {
-        ids: 'ethereum',
+        ids: 'ethereum,bitcoin,solana', // Added bitcoin and solana
         vs_currencies: 'usd',
       },
     });
 
     const data = response.data;
 
-    const prices = {
-      BTC: data.bitcoin.usd.toString(),
-      ETH: data.ethereum.usd.toString(),
-      SOL: data.solana.usd.toString(),
-    };
+    // Check if the data for each token exists before accessing the 'usd' field
+    const prices: Record<string, string> = {};
+
+    if (data.bitcoin?.usd) {
+      prices.BTC = data.bitcoin.usd.toString();
+    } else {
+      prices.BTC = 'N/A';
+    }
+
+    if (data.ethereum?.usd) {
+      prices.ETH = data.ethereum.usd.toString();
+    } else {
+      prices.ETH = 'N/A';
+    }
+
+    if (data.solana?.usd) {
+      prices.SOL = data.solana.usd.toString();
+    } else {
+      prices.SOL = 'N/A';
+    }
 
     res.json(prices);
   } catch (err: any) {
@@ -74,6 +89,7 @@ export const getLivePrices: RequestHandler = async (_req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 
 
