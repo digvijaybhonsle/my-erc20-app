@@ -90,7 +90,7 @@ const Dashboard = () => {
   // 3. Live Prices
   useEffect(() => {
     axios
-      .get(`http://localhost:5000/api/dashboard/prices`)
+      .get(`${import.meta.env.VITE_BACKEND_URL}/api/dashboard/prices`)
       .then((res) => setLivePrices(res.data))
       .catch(console.error);
   }, []);
@@ -98,7 +98,7 @@ const Dashboard = () => {
   // 4. Chart Data
   useEffect(() => {
     axios
-      .get(`http://localhost:5000/api/dashboard/price-history`, {
+      .get(`${import.meta.env.VITE_BACKEND_URL}/api/dashboard/price-history`, {
         params: { symbol: "eth", range: 7 },
       })
       .then((res) => {
