@@ -50,15 +50,15 @@ export const getSwapEstimate: RequestHandler = async (req, res) => {
 // 3. GET LIVE PRICES
 export const getLivePrices: RequestHandler = async (_req, res) => {
   try {
-    const response = await axios.get(
-      "https://api.coingecko.com/api/v3/simple/price",
-      {
-        params: {
-          ids: "bitcoin,ethereum,solana",
-          vs_currencies: "usd",
-        },
-      }
-    );
+    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price', {
+      headers: {
+        'User-Agent': 'my-erc21-app',
+      },
+      params: {
+        ids: 'ethereum',
+        vs_currencies: 'usd',
+      },
+    });
 
     const data = response.data;
 
@@ -97,9 +97,12 @@ export const getPriceHistory: RequestHandler = async (req, res) => {
     const response = await axios.get(
       `https://api.coingecko.com/api/v3/coins/${symbol}/market_chart`,
       {
+        headers: {
+          'User-Agent': 'my-erc21-app',
+        },
         params: {
-          vs_currency: "usd",
-          days,
+          ids: 'ethereum',
+          vs_currencies: 'usd',
         },
       }
     );
