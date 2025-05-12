@@ -136,7 +136,7 @@ const Home = () => {
       </div>
 
       {/* Learn / Swap Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 mt-12 px-6 min-h-[200px] gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 mt-12 px-6 min-h-[200px]">
         <div className="bg-gray-600 bg-opacity-30 p-6 rounded-l-lg shadow-md text-center border-r-2 flex flex-col justify-center items-center">
           <h2 className="text-2xl font-semibold text-yellow-400 mb-4">
             Know about Crypto
