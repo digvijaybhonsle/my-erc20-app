@@ -36,7 +36,7 @@ const Home = () => {
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-yellow-500 mb-4">
             Welcome to Smart Wallet
           </h1>
-          <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-2">
+          <p className="text-lg sm:text-xl md:text-2xl text-gray-200 my-4">
             Simple, Smart and trusted way to learn Crypto
           </p>
           <p className="text-base sm:text-lg text-gray-300 mt-4">
