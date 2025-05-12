@@ -30,7 +30,7 @@ const Home = () => {
   return (
     <div className="lg:px-[8rem]">
       {/* Hero Section */}
-      <div className="flex flex-col md:flex-row items-center justify-between px-4 sm:px-8 xl:px-[8rem] pt-24 pb-36 md:pt-28 md:pb-40">
+      <div className="flex flex-col md:flex-row items-center justify-between px-4 sm:px-8 pt-24 pb-36 md:pt-28 md:pb-40">
         {/* Text Section */}
         <div className="flex flex-col justify-center items-start w-full md:w-1/2 mb-12 md:mb-0 text-center md:text-left">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-yellow-500 mb-4">
