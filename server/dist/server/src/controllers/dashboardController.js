@@ -57,57 +57,91 @@ const getSwapEstimate = (req, res) => __awaiter(void 0, void 0, void 0, function
     }
 });
 exports.getSwapEstimate = getSwapEstimate;
-// 3. GET LIVE PRICES
+const DELTA_API_KEY = process.env.DELTA_API_KEY;
+const DELTA_HEADERS = {
+    'api-key': DELTA_API_KEY,
+};
+// === 3. GET LIVE PRICES FROM DELTA ===
 const getLivePrices = (_req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
-        const response = yield axios_1.default.get("https://api.coingecko.com/api/v3/simple/price", {
-            params: {
-                ids: "bitcoin,ethereum,solana",
-                vs_currencies: "usd",
-            },
+        const response = yield axios_1.default.get('https://api.delta.exchange/v2/tickers', {
+            headers: DELTA_HEADERS,
+            timeout: 5000,
         });
-        const data = response.data;
-        const prices = {
-            BTC: data.bitcoin.usd.toString(),
-            ETH: data.ethereum.usd.toString(),
-            SOL: data.solana.usd.toString(),
+        // Log the full response to inspect the structure
+        console.log("Delta API Response:", response.data);
+        if (!response.data.success || !Array.isArray(response.data.result)) {
+            throw new Error('Unexpected response structure');
+        }
+        const tickers = response.data.result;
+        if (tickers.length === 0) {
+            throw new Error('No tickers returned from Delta API');
+        }
+        // Log all available symbols for debugging
+        console.log("Available symbols:", tickers.map(t => t.symbol));
+        const getPrice = (symbol) => {
+            var _a;
+            const ticker = tickers.find(t => t.contract_type === 'perpetual_futures' &&
+                t.symbol.toLowerCase() === symbol.toLowerCase());
+            console.log(`Found ticker for ${symbol}:`, ticker);
+            // Use mark_price instead of last_price
+            return ((_a = ticker === null || ticker === void 0 ? void 0 : ticker.mark_price) === null || _a === void 0 ? void 0 : _a.toString()) || null;
         };
-        res.json(prices);
+        // Return the prices for the tickers
+        res.json({
+            BTC: getPrice('BTCUSDT'),
+            ETH: getPrice('ETHUSDT'),
+            SOL: getPrice('SOLUSDT'),
+        });
     }
     catch (err) {
-        console.error("Error fetching prices from CoinGecko:", err.message);
-        res.status(500).json({ error: err.message });
+        console.error('Error fetching live prices:', err.message || err);
+        console.error('Error details:', ((_a = err.response) === null || _a === void 0 ? void 0 : _a.data) || err);
+        res.status(500).json({ error: 'Failed to fetch live prices' });
     }
 });
 exports.getLivePrices = getLivePrices;
-// 4. GET PRICE HISTORY
+// === 4. GET PRICE HISTORY FROM DELTA ===
 const getPriceHistory = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const symbolMap = {
-        eth: "ethereum",
-        btc: "bitcoin",
-        sol: "solana",
-        ethereum: "ethereum",
-        bitcoin: "bitcoin",
-        solana: "solana",
+        eth: 'ETHUSDT',
+        btc: 'BTCUSDT',
+        sol: 'SOLUSDT',
+        ethereum: 'ETHUSDT',
+        bitcoin: 'BTCUSDT',
+        solana: 'SOLUSDT',
     };
-    const rawSymbol = (req.query.symbol || "eth").toLowerCase();
-    const symbol = symbolMap[rawSymbol] || rawSymbol;
-    const days = parseInt(req.query.range || "7", 10);
+    const raw = (req.query.symbol || 'eth').toLowerCase();
+    const symbol = symbolMap[raw] || 'ETHUSDT';
+    const days = parseInt(req.query.range || '7', 10);
+    if (isNaN(days) || days <= 0) {
+        res.status(400).json({ error: "'range' must be a positive integer" });
+        return; // early return
+    }
+    // Compute Unix timestamps (in seconds)
+    const end = Math.floor(Date.now() / 1000);
+    const start = end - days * 24 * 60 * 60;
     try {
-        const response = yield axios_1.default.get(`https://api.coingecko.com/api/v3/coins/${symbol}/market_chart`, {
-            params: {
-                vs_currency: "usd",
-                days,
-            },
+        const response = yield axios_1.default.get('https://api.delta.exchange/v2/history/candles', {
+            headers: DELTA_HEADERS,
+            timeout: 5000,
+            params: { symbol, resolution: '1d', start, end },
         });
-        const pricesData = response.data.prices;
-        const labels = pricesData.map(([timestamp]) => new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }));
-        const prices = pricesData.map(([, price]) => parseFloat(price.toFixed(2)));
+        if (!response.data.success || !Array.isArray(response.data.result)) {
+            throw new Error('Unexpected response structure');
+        }
+        const candles = response.data.result;
+        const labels = candles.map(c => new Date(c.time * 1000).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+        }));
+        const prices = candles.map(c => parseFloat(parseFloat(c.close).toFixed(2)));
         res.json({ labels, prices });
     }
     catch (err) {
-        console.error("Error fetching price history:", err.message);
-        res.status(500).json({ error: err.message });
+        console.error('Error fetching price history:', err.message || err);
+        res.status(500).json({ error: 'Failed to fetch price history' });
     }
 });
 exports.getPriceHistory = getPriceHistory;

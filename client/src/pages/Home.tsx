@@ -28,18 +28,18 @@ const Home = () => {
     price !== null ? `$${price.toLocaleString()}` : "Loading...";
 
   return (
-    <div>
+    <div className="lg:px-[8rem]">
       {/* Hero Section */}
-      <div className="flex flex-col md:flex-row items-center h-full pt-24 pb-36 md:pt-28 md:pb-40 px-6 sm:px-8">
+      <div className="flex flex-col md:flex-row items-center justify-between px-4 sm:px-8 lg:px-[6rem] xl:px-[8rem] pt-24 pb-36 md:pt-28 md:pb-40">
         {/* Text Section */}
-        <div className="flex flex-col justify-center items-start w-full md:w-1/2 mb-12 md:mb-0">
-          <h1 className="text-4xl sm:text-5xl font-bold text-yellow-500 text-left my-4">
+        <div className="flex flex-col justify-center items-start w-full md:w-1/2 mb-12 md:mb-0 text-center md:text-left">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-yellow-500 mb-4">
             Welcome to Smart Wallet
           </h1>
-          <p className="text-lg sm:text-2xl text-left my-2">
+          <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-2">
             Simple, Smart and trusted way to learn Crypto
           </p>
-          <p className="text-base sm:text-lg text-left mt-4">
+          <p className="text-base sm:text-lg text-gray-300 mt-4">
             New to crypto? Start with our easy-to-use wallet designed for
             beginners and curious minds. Send, receive, and explore blockchain
             with confidence.
@@ -47,7 +47,7 @@ const Home = () => {
           <div className="mt-6">
             <Link
               to="/join-wallet"
-              className="bg-blue-500 text-base sm:text-xl text-white px-6 py-3 rounded-full transition duration-200 ease-in-out transform hover:bg-blue-600 hover:scale-105 hover:shadow-lg"
+              className="bg-blue-500 text-base sm:text-lg md:text-xl text-white px-6 py-3 rounded-full transition duration-200 ease-in-out transform hover:bg-blue-600 hover:scale-105 hover:shadow-lg"
             >
               Get Started
             </Link>
@@ -55,7 +55,7 @@ const Home = () => {
         </div>
 
         {/* Image Section */}
-        <div className="w-full md:w-1/2 flex justify-center mt-8 md:mt-0">
+        <div className="w-full md:w-1/2 flex justify-center">
           <div className="relative bg-gradient-to-br from-yellow-500/20 to-yellow-700/10 p-4 rounded-full max-w-[80%] md:max-w-[70%] cursor-pointer backdrop-blur-md">
             <img
               src={box}

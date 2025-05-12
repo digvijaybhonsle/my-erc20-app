@@ -34,16 +34,12 @@ declare global {
 }
 
 const Dashboard = () => {
-  // Chart state
   const [chartLabels, setChartLabels] = useState<string[]>([]);
   const [chartPrices, setChartPrices] = useState<number[]>([]);
-
-  // Balances
   const [ethBalance, setEthBalance] = useState("0.00");
   const [usdcBalance, setUsdcBalance] = useState("0.00");
   const [daiBalance, setDaiBalance] = useState("0.00");
 
-  // Live prices
   const [livePrices, setLivePrices] = useState<{
     BTC: string;
     ETH: string;
@@ -54,19 +50,14 @@ const Dashboard = () => {
     SOL: "--",
   });
 
-  // Swap form
   const [swapTo, setSwapTo] = useState("USDC");
   const [amount, setAmount] = useState("");
-
-  // Estimate info
   const [receivedAmount, setReceivedAmount] = useState("—");
   const [gasFee, setGasFee] = useState("—");
   const [priceImpact, setPriceImpact] = useState("—");
-
-  // Wallet
   const [walletAddress, setWalletAddress] = useState("");
 
-  // 1. Get wallet from MetaMask
+  // 1. Connect Wallet
   useEffect(() => {
     (async () => {
       const eth = window.ethereum;
@@ -83,7 +74,7 @@ const Dashboard = () => {
     })();
   }, []);
 
-  // 2. Fetch balances when walletAddress is set
+  // 2. Fetch balances
   useEffect(() => {
     if (!walletAddress) return;
     axios
@@ -96,29 +87,28 @@ const Dashboard = () => {
       .catch(console.error);
   }, [walletAddress]);
 
-  // 3. Fetch live market prices once
+  // 3. Live Prices
   useEffect(() => {
     axios
-      .get(`${import.meta.env.VITE_BACKEND_URL}/api/dashboard/prices`)
+      .get(`http://localhost:5000/api/dashboard/prices`)
       .then((res) => setLivePrices(res.data))
       .catch(console.error);
   }, []);
 
-  // 4. Fetch price history for chart
+  // 4. Chart Data
   useEffect(() => {
     axios
-      .get(`${import.meta.env.VITE_BACKEND_URL}/api/dashboard/price-history`, {
+      .get(`http://localhost:5000/api/dashboard/price-history`, {
         params: { symbol: "eth", range: 7 },
       })
       .then((res) => {
-        console.log("Chart data:", res.data);
         setChartLabels(res.data.labels);
         setChartPrices(res.data.prices);
       })
       .catch(console.error);
   }, []);
 
-  // 5. Re-estimate on swap form changes
+  // 5. Estimate
   useEffect(() => {
     if (!amount) return;
     axios
@@ -135,7 +125,6 @@ const Dashboard = () => {
       .catch(console.error);
   }, [amount, swapTo]);
 
-  // Handlers
   const handleSwap = () => {
     axios
       .post(`${import.meta.env.VITE_BACKEND_URL}/api/dashboard/swap`, {
@@ -145,7 +134,6 @@ const Dashboard = () => {
         walletAddress,
       })
       .then(() => {
-        // refresh balances after swap
         return axios.get(`/api/dashboard/balances/${walletAddress}`);
       })
       .then((res) => {
@@ -196,7 +184,7 @@ const Dashboard = () => {
     },
     scales: {
       x: {
-        type: "category", // Explicitly set as category for "Days"
+        type: "category",
         title: {
           display: true,
           text: "Days",
@@ -211,7 +199,7 @@ const Dashboard = () => {
         },
       },
       y: {
-        type: "linear", // Explicitly set as linear for numeric prices
+        type: "linear",
         title: {
           display: true,
           text: "Price (USD)",
@@ -231,10 +219,10 @@ const Dashboard = () => {
         },
       },
     },
-  } as ChartOptions<"line">;
+  };
 
   return (
-    <div className="min-h-screen text-white px-6 py-10">
+    <div className="min-h-screen text-white px-4 py-10 max-w-7xl mx-auto">
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="text-4xl sm:text-5xl font-bold text-yellow-500 mb-2">
@@ -245,6 +233,7 @@ const Dashboard = () => {
         </p>
       </div>
 
+      {/* Grid Layout */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
         {/* Left Panel */}
         <motion.div
@@ -305,7 +294,7 @@ const Dashboard = () => {
             </p>
           </div>
 
-          {/* Action Buttons */}
+          {/* Action Button */}
           <button
             onClick={handleSwap}
             className="w-full bg-yellow-500 py-3 rounded-lg text-gray-900 font-bold mt-6 hover:scale-105 transition"
@@ -315,13 +304,18 @@ const Dashboard = () => {
         </motion.div>
 
         {/* Right Panel */}
-        <div className="space-y-8">
+        <motion.div
+          className="space-y-8 w-full"
+          initial={{ x: 50, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
           {/* Live Prices */}
           <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
             <h2 className="text-2xl font-bold text-yellow-400 mb-4">
               Live Prices
             </h2>
-            <div className="grid grid-cols-3 sm:grid-cols-1 gap-4 text-center text-white">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-center text-white">
               {(["BTC", "ETH", "SOL"] as const).map((sym) => (
                 <div key={sym} className="bg-gray-700 p-4 rounded-lg">
                   <h3 className="text-xl">{sym}</h3>
@@ -346,7 +340,7 @@ const Dashboard = () => {
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

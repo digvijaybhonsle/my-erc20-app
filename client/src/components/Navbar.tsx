@@ -20,7 +20,7 @@ const Navbar = ({ isWalletConnected }: NavbarProps) => {
 
   return (
     <header className="shadow-md py-2">
-      <nav className="flex items-center justify-between py-4 px-6 md:px-10 max-w-8xl mx-auto">
+      <nav className="flex items-center justify-between py-4 px-6 md:px-10 max-w-7xl mx-auto">
         {/* Logo */}
         <h1 className="text-yellow-500 text-3xl sm:text-4xl font-semibold">Smart Wallet</h1>
 

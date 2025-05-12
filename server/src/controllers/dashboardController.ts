@@ -47,92 +47,118 @@ export const getSwapEstimate: RequestHandler = async (req, res) => {
   }
 };
 
-// Common headers for all CoinGecko requests
-const COINGECKO_HEADERS = {
-  'User-Agent': 'my-erc20-app/1.0 (digvijaybhonsle007@gmail.com)',
-  'Accept': 'application/json',
+
+const DELTA_API_KEY = process.env.DELTA_API_KEY!;
+const DELTA_HEADERS = {
+  'api-key': DELTA_API_KEY,
 };
 
-// === 3. GET LIVE PRICES ===
+// === 3. GET LIVE PRICES FROM DELTA ===
 export const getLivePrices: RequestHandler = async (_req, res) => {
   try {
-    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price', {
-      headers: COINGECKO_HEADERS,
+    const response = await axios.get('https://api.delta.exchange/v2/tickers', {
+      headers: DELTA_HEADERS,
       timeout: 5000,
-      params: {
-        ids: 'ethereum,bitcoin,solana',
-        vs_currencies: 'usd',
-      },
     });
 
-    const data = response.data;
+    // Log the full response to inspect the structure
+    console.log("Delta API Response:", response.data);
 
-    const prices: Record<string, string | null> = {
-      BTC: data.bitcoin?.usd?.toString() || null,
-      ETH: data.ethereum?.usd?.toString() || null,
-      SOL: data.solana?.usd?.toString() || null,
+    if (!response.data.success || !Array.isArray(response.data.result)) {
+      throw new Error('Unexpected response structure');
+    }
+
+    const tickers = response.data.result as any[];
+
+    if (tickers.length === 0) {
+      throw new Error('No tickers returned from Delta API');
+    }
+
+    // Log all available symbols for debugging
+    console.log("Available symbols:", tickers.map(t => t.symbol));
+
+    const getPrice = (symbol: string): string | null => {
+      const ticker = tickers.find(
+        t =>
+          t.contract_type === 'perpetual_futures' &&
+          t.symbol.toLowerCase() === symbol.toLowerCase()
+      );
+      console.log(`Found ticker for ${symbol}:`, ticker);
+      // Use mark_price instead of last_price
+      return ticker?.mark_price?.toString() || null;
     };
 
-    res.json(prices);
+    // Return the prices for the tickers
+    res.json({
+      BTC: getPrice('BTCUSDT'),
+      ETH: getPrice('ETHUSDT'),
+      SOL: getPrice('SOLUSDT'),
+    });
   } catch (err: any) {
-    console.error("Error fetching prices from CoinGecko:", err);
-    res.status(500).json({ error: "Failed to fetch live prices" });
+    console.error('Error fetching live prices:', err.message || err);
+    console.error('Error details:', err.response?.data || err);
+    res.status(500).json({ error: 'Failed to fetch live prices' });
   }
 };
 
-
-// === 4. GET PRICE HISTORY ===
+// === 4. GET PRICE HISTORY FROM DELTA ===
 export const getPriceHistory: RequestHandler = async (req, res) => {
   const symbolMap: Record<string, string> = {
-    eth: "ethereum",
-    btc: "bitcoin",
-    sol: "solana",
-    ethereum: "ethereum",
-    bitcoin: "bitcoin",
-    solana: "solana",
+    eth: 'ETHUSDT',
+    btc: 'BTCUSDT',
+    sol: 'SOLUSDT',
+    ethereum: 'ETHUSDT',
+    bitcoin: 'BTCUSDT',
+    solana: 'SOLUSDT',
   };
 
-  const rawSymbol = (req.query.symbol as string || "eth").toLowerCase();
-  const symbol = symbolMap[rawSymbol] || rawSymbol;
-  const days = parseInt((req.query.range as string) || "7", 10);
-
+  const raw = (req.query.symbol as string || 'eth').toLowerCase();
+  const symbol = symbolMap[raw] || 'ETHUSDT';
+  const days = parseInt((req.query.range as string) || '7', 10);
   if (isNaN(days) || days <= 0) {
-    res.status(400).json({ error: "Invalid 'range' parameter. It should be a positive integer." });
-    return;
+    res.status(400).json({ error: "'range' must be a positive integer" });
+    return; // early return
   }
+
+  // Compute Unix timestamps (in seconds)
+  const end = Math.floor(Date.now() / 1000);
+  const start = end - days * 24 * 60 * 60;
 
   try {
     const response = await axios.get(
-      `https://api.coingecko.com/api/v3/coins/${symbol}/market_chart`,
+      'https://api.delta.exchange/v2/history/candles',
       {
-        headers: COINGECKO_HEADERS,
+        headers: DELTA_HEADERS,
         timeout: 5000,
-        params: {
-          vs_currency: 'usd',
-          days: days.toString(),
-        },
+        params: { symbol, resolution: '1d', start, end },
       }
     );
 
-    const pricesData = response.data.prices as [number, number][];
+    if (!response.data.success || !Array.isArray(response.data.result)) {
+      throw new Error('Unexpected response structure');
+    }
+    const candles = response.data.result as Array<{
+      time: number;
+      close: string;
+    }>;
 
-    const labels = pricesData.map(([timestamp]) =>
-      new Date(timestamp).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
+    const labels = candles.map(c =>
+      new Date(c.time * 1000).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
       })
     );
-
-    const prices = pricesData.map(([, price]) =>
-      parseFloat(price.toFixed(2))
+    const prices = candles.map(c =>
+      parseFloat(parseFloat(c.close).toFixed(2))
     );
 
     res.json({ labels, prices });
   } catch (err: any) {
-  console.error("Error fetching prices history from CoinGecko:", err);
-  res.status(500).json({ error: "Failed to fetch price history" });
+    console.error('Error fetching price history:', err.message || err);
+    res.status(500).json({ error: 'Failed to fetch price history' });
   }
 };
+
 
 
 // 5. QUICK SWAP

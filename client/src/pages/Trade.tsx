@@ -37,7 +37,7 @@ const Trade = () => {
     setIsSending(true);
     try {
       const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/trade/send`,
+        `http://localhost:5000/api/trade/send`,
         {
           to: sendTo,
           amount: amountToSend,

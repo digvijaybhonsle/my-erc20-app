@@ -1,7 +1,7 @@
 const Footer = () => {
   return (
     <footer className="shadow-md text-white py-6 px-4">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 py-4">
         <p className="text-lg text-center md:text-left">
           © 2025 Smart Wallet. All rights reserved.
         </p>
